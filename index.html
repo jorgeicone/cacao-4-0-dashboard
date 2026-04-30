@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cacao Rural AI 4.0 — Dashboard Interactivo</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #070c18;
+    --surface: rgba(16,24,40,0.85);
+    --border: rgba(255,255,255,0.08);
+    --emerald: #10b981;
+    --cyan: #06b6d4;
+    --amber: #f59e0b;
+    --rose: #f43f5e;
+    --violet: #8b5cf6;
+    --blue: #3b82f6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: #f1f5f9; min-height: 100vh; }
+
+  /* Animated bg */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 10% 10%, rgba(16,185,129,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 90% 80%, rgba(6,182,212,0.10) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 40% at 50% 50%, rgba(139,92,246,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .glass {
+    background: var(--surface);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--border);
+  }
+
+  /* Nav */
+  .nav-btn {
+    padding: 0.5rem 1.25rem; border-radius: 9999px; font-weight: 600; font-size: 0.85rem;
+    cursor: pointer; transition: all 0.2s; border: 1px solid transparent; color: #94a3b8;
+  }
+  .nav-btn.active { background: linear-gradient(135deg, #10b981, #06b6d4); color: white; border-color: transparent; }
+  .nav-btn:hover:not(.active) { background: rgba(255,255,255,0.07); color: #f1f5f9; }
+
+  /* Tabs */
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Cards */
+  .sector-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 1.25rem;
+    padding: 1.5rem;
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    cursor: pointer;
+    position: relative; overflow: hidden;
+  }
+  .sector-card::before {
+    content: ''; position: absolute; inset: 0; opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .sector-card:hover { transform: translateY(-3px); }
+  .sector-card:hover::before { opacity: 1; }
+  .sector-card.agrotech::before { background: linear-gradient(135deg, rgba(16,185,129,0.08), transparent); }
+  .sector-card.fintech::before { background: linear-gradient(135deg, rgba(245,158,11,0.08), transparent); }
+  .sector-card.deeptech::before { background: linear-gradient(135deg, rgba(139,92,246,0.08), transparent); }
+  .sector-card.ia::before { background: linear-gradient(135deg, rgba(59,130,246,0.08), transparent); }
+  .sector-card.edtech::before { background: linear-gradient(135deg, rgba(244,63,94,0.08), transparent); }
+  .sector-card.climatech::before { background: linear-gradient(135deg, rgba(6,182,212,0.08), transparent); }
+
+  .sector-card.agrotech:hover { border-color: rgba(16,185,129,0.4); }
+  .sector-card.fintech:hover { border-color: rgba(245,158,11,0.4); }
+  .sector-card.deeptech:hover { border-color: rgba(139,92,246,0.4); }
+  .sector-card.ia:hover { border-color: rgba(59,130,246,0.4); }
+  .sector-card.edtech:hover { border-color: rgba(244,63,94,0.4); }
+  .sector-card.climatech:hover { border-color: rgba(6,182,212,0.4); }
+
+  /* Badge */
+  .badge {
+    display: inline-block; font-size: 0.65rem; font-weight: 700;
+    padding: 0.2rem 0.6rem; border-radius: 999px; letter-spacing: 0.05em; text-transform: uppercase;
+  }
+
+  /* Input */
+  .inp {
+    background: rgba(10,18,35,0.9); border: 1px solid #1e293b;
+    color: #f1f5f9; border-radius: 0.75rem; padding: 0.75rem 1rem;
+    font-size: 0.875rem; width: 100%; outline: none; transition: border-color 0.2s;
+    font-family: inherit;
+  }
+  .inp:focus { border-color: #10b981; }
+
+  /* Btn */
+  .btn-primary {
+    background: linear-gradient(135deg, #10b981, #06b6d4);
+    color: white; font-weight: 700; border-radius: 0.75rem; border: none;
+    cursor: pointer; transition: opacity 0.2s, transform 0.15s;
+    font-family: inherit;
+  }
+  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-secondary {
+    background: rgba(255,255,255,0.06); border: 1px solid var(--border);
+    color: #94a3b8; font-weight: 600; border-radius: 0.75rem;
+    cursor: pointer; transition: all 0.2s; font-family: inherit;
+  }
+  .btn-secondary:hover { background: rgba(255,255,255,0.1); color: #f1f5f9; }
+
+  /* KPI */
+  .kpi-val {
+    font-size: 2rem; font-weight: 900; line-height: 1;
+    background: linear-gradient(135deg, #10b981, #06b6d4);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+
+  /* Timeline */
+  .timeline-item { position: relative; padding-left: 2rem; padding-bottom: 1.5rem; }
+  .timeline-item::before {
+    content: ''; position: absolute; left: 0.45rem; top: 0.6rem; bottom: 0;
+    width: 2px; background: linear-gradient(to bottom, #10b981, transparent);
+  }
+  .timeline-item:last-child::before { display: none; }
+  .timeline-dot {
+    position: absolute; left: 0; top: 0.4rem; width: 0.9rem; height: 0.9rem;
+    border-radius: 50%; border: 2px solid #10b981;
+    background: #070c18;
+  }
+
+  /* Progress bar */
+  .prog-bar { height: 6px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; }
+  .prog-fill { height: 100%; border-radius: 999px; transition: width 1.2s cubic-bezier(0.4,0,0.2,1); }
+
+  /* Idea card */
+  .idea-card {
+    background: rgba(16,24,40,0.9); border-radius: 1rem;
+    border-left: 4px solid var(--blue); padding: 1rem 1.25rem;
+    animation: slideIn 0.3s ease;
+  }
+  @keyframes slideIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:none; } }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+  }
+  .modal-overlay.open { display: flex; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+  /* Glow accent */
+  .glow-emerald { box-shadow: 0 0 20px rgba(16,185,129,0.3); }
+  .glow-cyan { box-shadow: 0 0 20px rgba(6,182,212,0.3); }
+
+  /* Expand detail */
+  .detail-panel { display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+  .detail-panel.open { display: block; }
+
+  /* Select */
+  select.inp option { background: #0f172a; }
+
+  /* Chip filter */
+  .chip { padding: 0.3rem 0.85rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; cursor: pointer; border: 1px solid var(--border); color: #94a3b8; transition: all 0.15s; }
+  .chip.active, .chip:hover { background: linear-gradient(135deg,#10b981,#06b6d4); color: white; border-color: transparent; }
+
+  /* Connection status */
+  .dot-online { width: 8px; height: 8px; border-radius: 50%; background: #10b981; animation: pulse-dot 2s infinite; }
+  .dot-offline { width: 8px; height: 8px; border-radius: 50%; background: #64748b; }
+  @keyframes pulse-dot { 0%,100%{ box-shadow:0 0 0 0 rgba(16,185,129,0.6); } 50%{ box-shadow:0 0 0 5px rgba(16,185,129,0); } }
+
+  canvas { max-width: 100%; }
+</style>
+</head>
+<body>
+<div class="relative z-10 max-w-6xl mx-auto px-4 py-6">
+
+  <!-- HEADER -->
+  <header class="glass rounded-3xl p-6 mb-6 relative overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-r from-emerald-600/20 via-cyan-600/15 to-violet-600/10 pointer-events-none rounded-3xl"></div>
+    <div class="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-3 mb-1">
+          <span class="text-3xl">🍫</span>
+          <h1 class="text-2xl font-black tracking-tight">Cacao Rural <span class="text-emerald-400">AI 4.0</span></h1>
+        </div>
+        <p class="text-slate-400 text-sm">Transformación Tecnológica del Ecosistema del Cacao · Dashboard Interactivo</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <div id="conn-status" class="flex items-center gap-2 glass px-3 py-1.5 rounded-full text-xs text-slate-400">
+          <div class="dot-offline" id="conn-dot"></div>
+          <span id="conn-label">Sin conexión</span>
+        </div>
+        <button onclick="openModal('modal-conn')" class="btn-primary px-4 py-2 text-sm">⚡ Conectar GitHub</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- NAV TABS -->
+  <nav class="flex flex-wrap gap-2 mb-6 glass rounded-2xl p-2">
+    <button class="nav-btn active" onclick="switchTab('dashboard', this)">📊 Dashboard</button>
+    <button class="nav-btn" onclick="switchTab('sectores', this)">🌱 Sectores</button>
+    <button class="nav-btn" onclick="switchTab('cadena', this)">🔗 Cadena de Valor</button>
+    <button class="nav-btn" onclick="switchTab('piloto', this)">🚀 Proyecto Piloto</button>
+    <button class="nav-btn" onclick="switchTab('ideas', this)">💡 Ideas & Base de Datos</button>
+    <button class="nav-btn" onclick="switchTab('mujeres', this)">👩‍🌾 Mujeres Cacaoteras</button>
+  </nav>
+
+  <!-- ════════════════════════════════════════════
+       TAB: DASHBOARD
+  ════════════════════════════════════════════ -->
+  <div id="tab-dashboard" class="tab-panel active">
+    <!-- KPIs -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div class="glass rounded-2xl p-5">
+        <p class="text-slate-400 text-xs mb-1 font-semibold uppercase tracking-wide">Sectores Activos</p>
+        <p class="kpi-val" id="kpi-sectores">6</p>
+        <p class="text-slate-500 text-xs mt-1">AgroTech → ClimaTech</p>
+      </div>
+      <div class="glass rounded-2xl p-5">
+        <p class="text-slate-400 text-xs mb-1 font-semibold uppercase tracking-wide">Ideas Registradas</p>
+        <p class="kpi-val" id="kpi-ideas">0</p>
+        <p class="text-slate-500 text-xs mt-1" id="kpi-ideas-sub">Sincroniza con GitHub</p>
+      </div>
+      <div class="glass rounded-2xl p-5">
+        <p class="text-slate-400 text-xs mb-1 font-semibold uppercase tracking-wide">Etapas del Piloto</p>
+        <p class="kpi-val">3</p>
+        <p class="text-slate-500 text-xs mt-1">Sensores → Blockchain → FinTech</p>
+      </div>
+      <div class="glass rounded-2xl p-5">
+        <p class="text-slate-400 text-xs mb-1 font-semibold uppercase tracking-wide">Impacto % Valor</p>
+        <p class="kpi-val">80%</p>
+        <p class="text-slate-500 text-xs mt-1">Generado en post-cosecha</p>
+      </div>
+    </div>
+
+    <!-- Chart row -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div class="glass rounded-2xl p-5">
+        <h3 class="font-bold mb-4 text-sm text-slate-300">📈 Distribución por Sector</h3>
+        <canvas id="chartSectores" height="220"></canvas>
+      </div>
+      <div class="glass rounded-2xl p-5">
+        <h3 class="font-bold mb-4 text-sm text-slate-300">🎯 Nivel de Implementación</h3>
+        <div class="space-y-4 mt-2">
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-slate-300">AgroTech</span><span class="text-emerald-400 font-bold">85%</span></div>
+            <div class="prog-bar"><div class="prog-fill bg-gradient-to-r from-emerald-500 to-emerald-400" style="width:0" data-w="85%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-slate-300">FinTech</span><span class="text-amber-400 font-bold">65%</span></div>
+            <div class="prog-bar"><div class="prog-fill bg-gradient-to-r from-amber-500 to-amber-400" style="width:0" data-w="65%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-slate-300">IA & Emergentes</span><span class="text-blue-400 font-bold">72%</span></div>
+            <div class="prog-bar"><div class="prog-fill bg-gradient-to-r from-blue-500 to-blue-400" style="width:0" data-w="72%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-slate-300">DeepTech</span><span class="text-violet-400 font-bold">48%</span></div>
+            <div class="prog-bar"><div class="prog-fill bg-gradient-to-r from-violet-500 to-violet-400" style="width:0" data-w="48%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-slate-300">EdTech</span><span class="text-rose-400 font-bold">55%</span></div>
+            <div class="prog-bar"><div class="prog-fill bg-gradient-to-r from-rose-500 to-rose-400" style="width:0" data-w="55%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-slate-300">ClimaTech</span><span class="text-cyan-400 font-bold">60%</span></div>
+            <div class="prog-bar"><div class="prog-fill bg-gradient-to-r from-cyan-500 to-cyan-400" style="width:0" data-w="60%"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick ideas preview -->
+    <div class="glass rounded-2xl p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-bold text-sm text-slate-300">💡 Últimas Ideas Registradas</h3>
+        <button onclick="switchTab('ideas', document.querySelectorAll('.nav-btn')[4])" class="text-xs text-emerald-400 font-semibold hover:underline">Ver todas →</button>
+      </div>
+      <div id="quick-ideas" class="space-y-3 text-slate-500 text-sm italic">
+        Conecta con GitHub para ver tus ideas aquí.
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       TAB: SECTORES
+  ════════════════════════════════════════════ -->
+  <div id="tab-sectores" class="tab-panel">
+    <p class="text-slate-400 text-sm mb-6">Haz clic en cualquier sector para expandir sus aplicaciones y casos de uso.</p>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+      <!-- AgroTech -->
+      <div class="sector-card agrotech" onclick="toggleDetail('det-agro')">
+        <div class="flex items-center gap-3 mb-3">
+          <span class="text-2xl">🌱</span>
+          <div>
+            <h3 class="font-bold">AgroTech</h3>
+            <span class="badge" style="background:rgba(16,185,129,0.15);color:#10b981">Tecnología Agrícola</span>
+          </div>
+          <span class="ml-auto text-slate-500 text-lg" id="icon-det-agro">﹢</span>
+        </div>
+        <p class="text-slate-400 text-sm">Sensores, drones e inteligencia de campo para transformar la productividad cacaotera.</p>
+        <div class="detail-panel" id="det-agro">
+          <div class="space-y-3">
+            <div class="flex gap-3 items-start">
+              <span class="text-emerald-400 mt-0.5">▸</span>
+              <div><p class="text-sm font-semibold text-slate-200">Fermentación Controlada</p><p class="text-xs text-slate-400 mt-0.5">Sensores de temperatura y pH en cajones de fermentación para asegurar el "perfil de sabor" premium.</p></div>
+            </div>
+            <div class="flex gap-3 items-start">
+              <span class="text-emerald-400 mt-0.5">▸</span>
+              <div><p class="text-sm font-semibold text-slate-200">Detección de Monilia con Drones</p><p class="text-xs text-slate-400 mt-0.5">Drones equipados con visión hiperespectral detectan el hongo antes de que se extienda por la parcela.</p></div>
+            </div>
+            <div class="flex gap-3 items-start">
+              <span class="text-emerald-400 mt-0.5">▸</span>
+              <div><p class="text-sm font-semibold text-slate-200">Monitoreo de Suelo en Tiempo Real</p><p class="text-xs text-slate-400 mt-0.5">Sensores IoT miden nutrientes del suelo, humedad y temperatura para optimizar la cosecha.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FinTech -->
+      <div class="sector-card fintech" onclick="toggleDetail('det-fin')">
+        <div class="flex items-center gap-3 mb-3">
+          <span class="text-2xl">💰</span>
+          <div>
+            <h3 class="font-bold">FinTech</h3>
+            <span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b">Tecnología Financiera</span>
+          </div>
+          <span class="ml-auto text-slate-500 text-lg" id="icon-det-fin">﹢</span>
+        </div>
+        <p class="text-slate-400 text-sm">Pagos digitales, créditos inteligentes y monetización del carbono para el productor.</p>
+        <div class="detail-panel" id="det-fin">
+          <div class="space-y-3">
+            <div class="flex gap-3 items-start">
+              <span class="text-amber-400 mt-0.5">▸</span>
+              <div><p class="text-sm font-semibold text-slate-200">Pagos por Carbono</p><p class="text-xs text-slate-400 mt-0.5">Los cacaotales como sistemas agroforestales capturan carbono. Las FinTech monetizan esto directamente para el campesino.</p></div>
+            </div>
+            <div class="flex gap-3 items-start">
+              <span class="text-amber-400 mt-0.5">▸</span>
+              <div><p class="text-sm font-semibold text-slate-200">Créditos por Satélite</p><p class="text-xs text-slate-400 mt-0.5">Créditos rápidos basados en la proyección de cosecha captada por imágenes satelitales.</p></div>
+            </div>
+            <div class="flex gap-3 items-start">
+              <span class="text-amber-400 mt-0.5">▸</span>
+              <div><p class="text-sm font-semibold text-slate-200">Comercio Directo</p><p class="text-xs text-slate-400 mt-0.5">Elimina 4-5 intermediarios: plataforma FinTech que conecta asociaciones de productores con chocolaterías en Medellín o París.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DeepTech -->
+      <div class="sector-card deeptech" onclick="toggleDetail('det-deep')">
+        <div class="flex items-center gap-3 mb-3">
+          <span class="text-2xl">🧬</span>
+          <div>
+            <h3 class="font-bold">DeepTech</h3>
+            <span class="badge" style="background:rgba(139,92,246,0.15);color:#8b5cf6">Tecnología Profunda</span>
+          </div>
+          <span class="ml-auto text-slate-500 text-lg" id="icon-det-deep">﹢</span>
+        </div>
+        <p class="text-slate-400 text-sm">Genómica, bio-insumos y ciencia aplicada para cumplir normativas europeas.</p>
+        <div class="detail-panel" id="det-deep">
+          <div class="space-y-3">
+            <div class="flex gap-3 items-start">
+              <span class="text-violet-400 mt-0.5">▸</span>
+              <div><p class="text-sm font-semibold text-slate-200">Genómica del Cacao</p><p class="text-xs text-slate-400 mt-0.5">Identificación de variedades resistentes al Cadmio para cumplir normativas de la Unión Europea.</p></div>
+            </div>
+            <div class="flex gap-3 items-start">
+              <span class="text-violet-400 mt-0.5">▸</span>
+              <div><p class="text-sm font-semibold text-slate-200">Bio-insumos Anti-metales</p><p class="text-xs text-slate-400 mt-0.5">Creación de bio-insumos naturales que eliminan metales pesados del suelo de forma sostenible.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- IA & Emergentes -->
+      <div class="sector-card ia" onclick="toggleDetail('det-ia')">
+        <div class="flex items-center gap-3 mb-3">
+          <span class="text-2xl">🤖</span>
+          <div>
+            <h3 class="font-bold">IA & Tecnologías Emergentes</h3>
+            <span class="badge" style="background:rgba(59,130,246,0.15);color:#3b82f6">Inteligencia Artificial</span>
+          </div>
+          <span class="ml-auto text-slate-500 text-lg" id="icon-det-ia">﹢</span>
+        </div>
+        <p class="text-slate-400 text-sm">Blockchain para trazabilidad, IA de calidad y automatización del proceso.</p>
+        <div class="detail-panel" id="det-ia">
+          <div class="space-y-3">
+            <div class="flex gap-3 items-start">
+              <span class="text-blue-400 mt-0.5">▸</span>
+              <div><p class="text-sm font-semibold text-slate-200">Blockchain Trazabilidad QR</p><p class="text-xs text-slate-400 mt-0.5">El consumidor en Europa escanea un QR y ve quién, dónde y cuándo se cosechó ese cacao.</p></div>
+            </div>
+            <div class="flex gap-3 items-start">
+              <span class="text-blue-400 mt-0.5">▸</span>
+              <div><p class="text-sm font-semibold text-slate-200">IA Clasificadora de Grano</p><p class="text-xs text-slate-400 mt-0.5">Clasifica calidad del grano mediante fotografía tomada con el celular del productor.</p></div>
+            </div>
+            <div class="flex gap-3 items-start">
+              <span class="text-blue-400 mt-0.5">▸</span>
+              <div><p class="text-sm font-semibold text-slate-200">IA para Perfil de Sabor</p><p class="text-xs text-slate-400 mt-0.5">Analiza datos de fermentación y secado para predecir si el lote es "Cacao Fino de Aroma" o corriente.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- EdTech -->
+      <div class="sector-card edtech" onclick="toggleDetail('det-ed')">
+        <div class="flex items-center gap-3 mb-3">
+          <span class="text-2xl">📚</span>
+          <div>
+            <h3 class="font-bold">EdTech</h3>
+            <span class="badge" style="background:rgba(244,63,94,0.15);color:#f43f5e">Tecnología Educativa</span>
+          </div>
+          <span class="ml-auto text-slate-500 text-lg" id="icon-det-ed">﹢</span>
+        </div>
+        <p class="text-slate-400 text-sm">Realidad aumentada y micro-aprendizaje para capacitar catadores y exportadores rurales.</p>
+        <div class="detail-panel" id="det-ed">
+          <div class="space-y-3">
+            <div class="flex gap-3 items-start">
+              <span class="text-rose-400 mt-0.5">▸</span>
+              <div><p class="text-sm font-semibold text-slate-200">Escuela de Catadores Rurales (AR)</p><p class="text-xs text-slate-400 mt-0.5">Realidad aumentada para enseñar a jóvenes rurales a identificar sabores y defectos del grano sin salir de su finca.</p></div>
+            </div>
+            <div class="flex gap-3 items-start">
+              <span class="text-rose-400 mt-0.5">▸</span>
+              <div><p class="text-sm font-semibold text-slate-200">Micro-cápsulas vía WhatsApp</p><p class="text-xs text-slate-400 mt-0.5">Contenido de aprendizaje sobre exportación entregado en cápsulas diarias por WhatsApp.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ClimaTech -->
+      <div class="sector-card climatech" onclick="toggleDetail('det-clima')">
+        <div class="flex items-center gap-3 mb-3">
+          <span class="text-2xl">🌿</span>
+          <div>
+            <h3 class="font-bold">ClimaTech</h3>
+            <span class="badge" style="background:rgba(6,182,212,0.15);color:#06b6d4">Tecnología Climática</span>
+          </div>
+          <span class="ml-auto text-slate-500 text-lg" id="icon-det-clima">﹢</span>
+        </div>
+        <p class="text-slate-400 text-sm">Sistemas agroforestales y secado solar para mitigar el cambio climático.</p>
+        <div class="detail-panel" id="det-clima">
+          <div class="space-y-3">
+            <div class="flex gap-3 items-start">
+              <span class="text-cyan-400 mt-0.5">▸</span>
+              <div><p class="text-sm font-semibold text-slate-200">Sistemas Agroforestales (SAF)</p><p class="text-xs text-slate-400 mt-0.5">Sensores para medir el sombrío óptimo (cacao + maderables) para mitigar el calor extremo.</p></div>
+            </div>
+            <div class="flex gap-3 items-start">
+              <span class="text-cyan-400 mt-0.5">▸</span>
+              <div><p class="text-sm font-semibold text-slate-200">Secadores Solares Automatizados</p><p class="text-xs text-slate-400 mt-0.5">Evitan que el humo de secado tradicional afecte el aroma premium del grano.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       TAB: CADENA DE VALOR
+  ════════════════════════════════════════════ -->
+  <div id="tab-cadena" class="tab-panel">
+    <div class="glass rounded-2xl p-6 mb-6">
+      <h2 class="text-lg font-black mb-2">🔗 Del Grano a la Barra — Value-Added</h2>
+      <p class="text-slate-400 text-sm">La clave de la rentabilidad rural no está solo en vender el grano seco. La tecnología permite <strong class="text-emerald-400">industrializar en origen</strong> y capturar el mayor valor de la cadena.</p>
+    </div>
+
+    <!-- Chain steps -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      <div class="glass rounded-2xl p-5 text-center relative">
+        <div class="text-3xl mb-2">🌳</div>
+        <h4 class="font-bold text-sm mb-1">1. Finca</h4>
+        <p class="text-xs text-slate-400">Cultivo, cosecha y fermentación controlada por sensores IoT</p>
+        <div class="mt-3 text-xs text-emerald-400 font-semibold">AgroTech + ClimaTech</div>
+      </div>
+      <div class="relative flex items-center justify-center">
+        <div class="hidden md:block absolute left-0 right-0 top-1/2 h-0.5 bg-gradient-to-r from-emerald-500/40 to-cyan-500/40"></div>
+      </div>
+      <div class="glass rounded-2xl p-5 text-center">
+        <div class="text-3xl mb-2">⚙️</div>
+        <h4 class="font-bold text-sm mb-1">2. Post-Cosecha</h4>
+        <p class="text-xs text-slate-400">Fermentación y secado donde se genera el <span class="text-amber-400 font-bold">80% del valor del sabor</span></p>
+        <div class="mt-3 text-xs text-amber-400 font-semibold">IA + AgroTech</div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      <div class="glass rounded-2xl p-5 text-center">
+        <div class="text-3xl mb-2">🔬</div>
+        <h4 class="font-bold text-sm mb-1">3. Clasificación</h4>
+        <p class="text-xs text-slate-400">IA clasifica si el lote es <em>Cacao Fino de Aroma</em> o corriente mediante foto del celular</p>
+        <div class="mt-3 text-xs text-blue-400 font-semibold">IA & Emergentes</div>
+      </div>
+      <div class="relative flex items-center justify-center">
+        <div class="hidden md:block absolute left-0 right-0 top-1/2 h-0.5 bg-gradient-to-r from-blue-500/40 to-violet-500/40"></div>
+      </div>
+      <div class="glass rounded-2xl p-5 text-center">
+        <div class="text-3xl mb-2">🔒</div>
+        <h4 class="font-bold text-sm mb-1">4. Certificación</h4>
+        <p class="text-xs text-slate-400">Blockchain registra trazabilidad completa: quién, dónde y cuándo cosechó</p>
+        <div class="mt-3 text-xs text-violet-400 font-semibold">Blockchain</div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="glass rounded-2xl p-5 text-center">
+        <div class="text-3xl mb-2">💸</div>
+        <h4 class="font-bold text-sm mb-1">5. Comercialización</h4>
+        <p class="text-xs text-slate-400">FinTech elimina intermediarios: pago directo desde chocolatería a productor</p>
+        <div class="mt-3 text-xs text-amber-400 font-semibold">FinTech</div>
+      </div>
+      <div class="relative flex items-center justify-center">
+        <div class="hidden md:block absolute left-0 right-0 top-1/2 h-0.5 bg-gradient-to-r from-amber-500/40 to-rose-500/40"></div>
+      </div>
+      <div class="glass rounded-2xl p-5 text-center">
+        <div class="text-3xl mb-2">🍫</div>
+        <h4 class="font-bold text-sm mb-1">6. Barra Final</h4>
+        <p class="text-xs text-slate-400">Consumidor en Europa escanea QR y accede a la historia del productor</p>
+        <div class="mt-3 text-xs text-rose-400 font-semibold">Blockchain + EdTech</div>
+      </div>
+    </div>
+
+    <!-- Value comparison -->
+    <div class="glass rounded-2xl p-6 mt-8">
+      <h3 class="font-bold mb-4 text-sm text-slate-300">💹 Valor Capturado con vs. sin Tecnología</h3>
+      <canvas id="chartValor" height="140"></canvas>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       TAB: PROYECTO PILOTO
+  ════════════════════════════════════════════ -->
+  <div id="tab-piloto" class="tab-panel">
+    <div class="glass rounded-2xl p-6 mb-6 border border-emerald-500/20 glow-emerald">
+      <h2 class="text-xl font-black mb-1">🚀 Proyecto Piloto: <span class="text-emerald-400">Cacao Tech-Trace</span></h2>
+      <p class="text-slate-400 text-sm">Modelo integrado de tres pilares tecnológicos para demostrar el impacto real en campo.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+      <div class="glass rounded-2xl p-5 border border-emerald-500/30">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-black text-sm">1</span>
+          <span class="font-bold text-sm">AgroTech</span>
+        </div>
+        <p class="text-2xl mb-2">📡</p>
+        <h4 class="font-semibold text-sm mb-2 text-emerald-300">Sensores de Humedad</h4>
+        <p class="text-xs text-slate-400">Se instalan sensores de humedad en las fincas participantes. Los datos se cargan en tiempo real para monitoreo continuo del proceso de secado.</p>
+        <div class="mt-4 space-y-1">
+          <div class="flex justify-between text-xs"><span class="text-slate-400">Fincas objetivo</span><span class="text-emerald-400 font-bold">50</span></div>
+          <div class="flex justify-between text-xs"><span class="text-slate-400">Sensores/finca</span><span class="text-emerald-400 font-bold">3–5</span></div>
+        </div>
+      </div>
+
+      <div class="glass rounded-2xl p-5 border border-blue-500/30">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-black text-sm">2</span>
+          <span class="font-bold text-sm">Blockchain</span>
+        </div>
+        <p class="text-2xl mb-2">🔗</p>
+        <h4 class="font-semibold text-sm mb-2 text-blue-300">Certificación Emergentes</h4>
+        <p class="text-xs text-slate-400">Los datos de sensores se suben a un Blockchain para certificar que es cacao orgánico. Genera un QR escaneaple por el comprador final.</p>
+        <div class="mt-4 space-y-1">
+          <div class="flex justify-between text-xs"><span class="text-slate-400">Datos inmutables</span><span class="text-blue-400 font-bold">✓ Sí</span></div>
+          <div class="flex justify-between text-xs"><span class="text-slate-400">Certificado EU</span><span class="text-blue-400 font-bold">✓ Compatible</span></div>
+        </div>
+      </div>
+
+      <div class="glass rounded-2xl p-5 border border-amber-500/30">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400 font-black text-sm">3</span>
+          <span class="font-bold text-sm">FinTech</span>
+        </div>
+        <p class="text-2xl mb-2">💳</p>
+        <h4 class="font-semibold text-sm mb-2 text-amber-300">Premio por Calidad</h4>
+        <p class="text-xs text-slate-400">Billetera Digital activa: cuando el sensor marca secado perfecto, el productor recibe inmediatamente un "premio por calidad" en su billetera.</p>
+        <div class="mt-4 space-y-1">
+          <div class="flex justify-between text-xs"><span class="text-slate-400">Pago automático</span><span class="text-amber-400 font-bold">✓ Sí</span></div>
+          <div class="flex justify-between text-xs"><span class="text-slate-400">Sin intermediarios</span><span class="text-amber-400 font-bold">✓ Directo</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="glass rounded-2xl p-6">
+      <h3 class="font-bold mb-5 text-sm text-slate-300">📅 Hoja de Ruta del Piloto</h3>
+      <div class="timeline-item">
+        <div class="timeline-dot" style="background:#10b981;border-color:#10b981"></div>
+        <p class="text-xs text-emerald-400 font-bold mb-0.5">Mes 1–2</p>
+        <p class="font-semibold text-sm">Selección de Fincas Piloto</p>
+        <p class="text-xs text-slate-400 mt-0.5">Identificar 50 fincas en asociaciones de productores. Instalar sensores de humedad y temperatura.</p>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <p class="text-xs text-slate-400 font-bold mb-0.5">Mes 3–4</p>
+        <p class="font-semibold text-sm text-slate-300">Integración Blockchain</p>
+        <p class="text-xs text-slate-400 mt-0.5">Conectar los sensores a la red Blockchain. Generar primeros certificados digitales de calidad.</p>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <p class="text-xs text-slate-400 font-bold mb-0.5">Mes 5–6</p>
+        <p class="font-semibold text-sm text-slate-300">Activación Billetera Digital</p>
+        <p class="text-xs text-slate-400 mt-0.5">Lanzar sistema de pagos por calidad. Primer pago automático al productor.</p>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <p class="text-xs text-slate-400 font-bold mb-0.5">Mes 7–12</p>
+        <p class="font-semibold text-sm text-slate-300">Escalado y Evaluación</p>
+        <p class="text-xs text-slate-400 mt-0.5">Medir impacto en ingresos del productor. Preparar modelo para replicación nacional.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       TAB: IDEAS
+  ════════════════════════════════════════════ -->
+  <div id="tab-ideas" class="tab-panel">
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <!-- Form -->
+      <div class="lg:col-span-2 space-y-4">
+        <div class="glass rounded-2xl p-5">
+          <h3 class="font-bold mb-4 text-sm">⚡ Configuración GitHub</h3>
+          <div class="space-y-3">
+            <input type="password" id="gh-token2" placeholder="GitHub Personal Token" class="inp">
+            <input type="text" id="gh-repo2" placeholder="usuario/repositorio" class="inp">
+            <button onclick="connectGH()" class="btn-primary w-full py-2.5 text-sm">Conectar & Cargar Ideas</button>
+          </div>
+        </div>
+        <div class="glass rounded-2xl p-5">
+          <h3 class="font-bold mb-4 text-sm">✨ Nueva Idea</h3>
+          <div class="space-y-3">
+            <select id="cat-idea" class="inp">
+              <option value="AgroTech">🌱 AgroTech</option>
+              <option value="FinTech">💰 FinTech</option>
+              <option value="DeepTech">🧬 DeepTech</option>
+              <option value="IA">🤖 IA & Emergentes</option>
+              <option value="EdTech">📚 EdTech</option>
+              <option value="ClimaTech">🌿 ClimaTech</option>
+              <option value="General">💡 General</option>
+            </select>
+            <input type="text" id="titulo-idea" placeholder="Título de la idea" class="inp">
+            <textarea id="text-idea" rows="4" placeholder="Describe tu idea de innovación..." class="inp resize-none"></textarea>
+            <button onclick="saveIdea()" id="btn-save" class="btn-primary w-full py-3 font-bold text-sm">💾 Guardar en Base de Datos</button>
+          </div>
+        </div>
+        <!-- Local ideas (sin GitHub) -->
+        <div class="glass rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-bold text-sm">📋 Ideas Locales</h3>
+            <span class="text-xs text-slate-500" id="local-count">0 ideas</span>
+          </div>
+          <p class="text-xs text-slate-500 mb-3">Añade ideas aunque no estés conectado. Se sincronizan al conectarte.</p>
+          <button onclick="addLocalIdea()" class="btn-secondary w-full py-2 text-xs">+ Añadir idea local</button>
+        </div>
+      </div>
+
+      <!-- Feed -->
+      <div class="lg:col-span-3">
+        <div class="glass rounded-2xl p-5 h-full min-h-[400px]">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-bold text-sm">📂 Ideas Registradas</h3>
+            <span id="ideas-count" class="text-xs text-slate-500">0 ideas</span>
+          </div>
+          <!-- Filters -->
+          <div class="flex flex-wrap gap-2 mb-4" id="filters">
+            <span class="chip active" onclick="filterIdeas('all', this)">Todas</span>
+            <span class="chip" onclick="filterIdeas('AgroTech', this)">🌱 AgroTech</span>
+            <span class="chip" onclick="filterIdeas('FinTech', this)">💰 FinTech</span>
+            <span class="chip" onclick="filterIdeas('IA', this)">🤖 IA</span>
+            <span class="chip" onclick="filterIdeas('DeepTech', this)">🧬 Deep</span>
+            <span class="chip" onclick="filterIdeas('EdTech', this)">📚 Ed</span>
+            <span class="chip" onclick="filterIdeas('ClimaTech', this)">🌿 Clima</span>
+          </div>
+          <div id="ideas-feed" class="space-y-3 overflow-y-auto max-h-[520px] pr-1">
+            <p class="text-slate-500 text-sm italic text-center mt-12">Conecta con GitHub o añade ideas locales para comenzar.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       TAB: MUJERES CACAOTERAS
+  ════════════════════════════════════════════ -->
+  <div id="tab-mujeres" class="tab-panel">
+    <div class="glass rounded-2xl p-6 mb-6 border border-rose-500/20">
+      <h2 class="text-xl font-black mb-2">👩‍🌾 Mujeres Cacaoteras</h2>
+      <p class="text-slate-300 text-sm leading-relaxed">En el cacao, las mujeres son las encargadas de la <strong class="text-rose-400">post-cosecha</strong> —fermentación y secado— que es donde se crea el <strong class="text-amber-400">80% del valor del sabor</strong>. La tecnología las empodera como <em>"maestras chocolateras"</em>, no solo como mano de obra.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div class="glass rounded-2xl p-5">
+        <h3 class="font-bold mb-4 text-sm text-rose-300">🎯 Enfoque de Género</h3>
+        <div class="space-y-4">
+          <div class="flex gap-3 items-start">
+            <span class="text-2xl">📡</span>
+            <div>
+              <p class="font-semibold text-sm">Control de Fermentación AgroTech</p>
+              <p class="text-xs text-slate-400 mt-1">Dotar a las asociaciones de mujeres con sensores de temperatura y pH que las posicionan como expertas técnicas en control de calidad.</p>
+            </div>
+          </div>
+          <div class="flex gap-3 items-start">
+            <span class="text-2xl">🎓</span>
+            <div>
+              <p class="font-semibold text-sm">Certificación como Maestras Chocolateras</p>
+              <p class="text-xs text-slate-400 mt-1">Programas EdTech de catación y control de calidad certificados que aumentan directamente sus ingresos y reconocimiento.</p>
+            </div>
+          </div>
+          <div class="flex gap-3 items-start">
+            <span class="text-2xl">💳</span>
+            <div>
+              <p class="font-semibold text-sm">Acceso Directo a FinTech</p>
+              <p class="text-xs text-slate-400 mt-1">Billeteras digitales a nombre de las asociaciones de mujeres. Pagos directos por calidad de fermentación.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass rounded-2xl p-5">
+        <h3 class="font-bold mb-4 text-sm text-rose-300">📊 Impacto Esperado</h3>
+        <canvas id="chartMujeres" height="200"></canvas>
+      </div>
+    </div>
+
+    <div class="glass rounded-2xl p-5 border border-amber-500/20">
+      <h3 class="font-bold mb-3 text-amber-300 text-sm">💡 Por qué es clave estratégicamente</h3>
+      <p class="text-slate-300 text-sm leading-relaxed">
+        El 80% del perfil de sabor del cacao se determina en la fermentación y el secado — procesos que históricamente han gestionado las mujeres rurales. Al dotarlas de tecnología AgroTech para controlar estos procesos con precisión científica, no solo se mejora la calidad del producto, sino que se reconoce y remunera su rol esencial en la cadena de valor. Una "maestra chocolatera" con sensor IoT puede generar ingresos 3–5 veces superiores a quien vende grano sin clasificar.
+      </p>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<!-- ══════════════════════════
+     MODAL: CONEXIÓN GITHUB
+══════════════════════════ -->
+<div class="modal-overlay" id="modal-conn">
+  <div class="glass rounded-2xl p-6 w-full max-w-md mx-4">
+    <div class="flex justify-between items-center mb-5">
+      <h3 class="font-black">⚡ Conectar con GitHub</h3>
+      <button onclick="closeModal('modal-conn')" class="text-slate-400 hover:text-white text-xl">✕</button>
+    </div>
+    <div class="space-y-3 mb-4">
+      <input type="password" id="m-token" placeholder="GitHub Personal Token" class="inp">
+      <input type="text" id="m-repo" placeholder="usuario/repositorio (ej: miusuario/cacao-ideas)" class="inp">
+    </div>
+    <p class="text-xs text-slate-500 mb-4">El repositorio debe tener un archivo <code class="text-emerald-400">ideas.json</code> (puede estar vacío: <code class="text-emerald-400">[]</code>).</p>
+    <div class="flex gap-3">
+      <button onclick="connectFromModal()" class="btn-primary flex-1 py-3 text-sm font-bold">Conectar</button>
+      <button onclick="closeModal('modal-conn')" class="btn-secondary flex-1 py-3 text-sm">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════
+     MODAL: AÑADIR IDEA LOCAL
+══════════════════════════ -->
+<div class="modal-overlay" id="modal-local">
+  <div class="glass rounded-2xl p-6 w-full max-w-md mx-4">
+    <div class="flex justify-between items-center mb-5">
+      <h3 class="font-black">💡 Nueva Idea Local</h3>
+      <button onclick="closeModal('modal-local')" class="text-slate-400 hover:text-white text-xl">✕</button>
+    </div>
+    <div class="space-y-3 mb-4">
+      <select id="m-cat" class="inp">
+        <option value="AgroTech">🌱 AgroTech</option>
+        <option value="FinTech">💰 FinTech</option>
+        <option value="DeepTech">🧬 DeepTech</option>
+        <option value="IA">🤖 IA & Emergentes</option>
+        <option value="EdTech">📚 EdTech</option>
+        <option value="ClimaTech">🌿 ClimaTech</option>
+        <option value="General">💡 General</option>
+      </select>
+      <input type="text" id="m-titulo" placeholder="Título" class="inp">
+      <textarea id="m-texto" rows="3" placeholder="Descripción de la idea..." class="inp resize-none"></textarea>
+    </div>
+    <div class="flex gap-3">
+      <button onclick="saveLocalIdea()" class="btn-primary flex-1 py-3 text-sm font-bold">Guardar Localmente</button>
+      <button onclick="closeModal('modal-local')" class="btn-secondary flex-1 py-3 text-sm">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── STATE ─────────────────────────────
+let db = [];
+let sha = "";
+let ghToken = "";
+let ghRepo = "";
+let localIdeas = JSON.parse(localStorage.getItem('cacao-local-ideas') || '[]');
+let filterActive = 'all';
+
+// ─── TABS ──────────────────────────────
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ─── MODALS ────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ─── SECTOR CARDS ──────────────────────
+function toggleDetail(id) {
+  const el = document.getElementById(id);
+  const icon = document.getElementById('icon-' + id);
+  const isOpen = el.classList.contains('open');
+  document.querySelectorAll('.detail-panel').forEach(p => {
+    p.classList.remove('open');
+  });
+  document.querySelectorAll('[id^="icon-det-"]').forEach(i => i.textContent = '﹢');
+  if (!isOpen) {
+    el.classList.add('open');
+    if (icon) icon.textContent = '−';
+  }
+}
+
+// ─── GITHUB CONNECTION ─────────────────
+async function connectGH() {
+  ghToken = document.getElementById('gh-token2').value.trim();
+  ghRepo = document.getElementById('gh-repo2').value.trim();
+  if (!ghToken || !ghRepo) return alert("Ingresa el token y el repositorio.");
+  await doConnect();
+}
+
+async function connectFromModal() {
+  ghToken = document.getElementById('m-token').value.trim();
+  ghRepo = document.getElementById('m-repo').value.trim();
+  document.getElementById('gh-token2').value = ghToken;
+  document.getElementById('gh-repo2').value = ghRepo;
+  closeModal('modal-conn');
+  await doConnect();
+}
+
+async function doConnect() {
+  try {
+    const res = await fetch(`https://api.github.com/repos/${ghRepo}/contents/ideas.json`, {
+      headers: { 'Authorization': `token ${ghToken}` }
+    });
+    if (!res.ok) {
+      const msg = res.status === 404
+        ? "Archivo ideas.json no encontrado. Créalo en tu repositorio con contenido: []"
+        : "Error de autenticación. Verifica tu token.";
+      return alert(msg);
+    }
+    const data = await res.json();
+    sha = data.sha;
+    try {
+      db = JSON.parse(atob(data.content.replace(/\s/g, '')));
+    } catch(e) { db = []; }
+    setConnected(true);
+    renderIdeas();
+    renderQuickIdeas();
+    updateKPIs();
+    alert(`✅ Conectado. ${db.length} ideas cargadas.`);
+  } catch (e) { alert("Error de conexión: " + e.message); }
+}
+
+function setConnected(v) {
+  const dot = document.getElementById('conn-dot');
+  const label = document.getElementById('conn-label');
+  if (v) {
+    dot.className = 'dot-online';
+    label.textContent = ghRepo;
+  } else {
+    dot.className = 'dot-offline';
+    label.textContent = 'Sin conexión';
+  }
+}
+
+// ─── IDEAS ─────────────────────────────
+async function saveIdea() {
+  const txt = document.getElementById('text-idea').value.trim();
+  const titulo = document.getElementById('titulo-idea').value.trim();
+  const cat = document.getElementById('cat-idea').value;
+  if (!txt) return alert("Escribe una idea.");
+  if (!sha) return alert("Conecta primero con GitHub.");
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true; btn.textContent = "Sincronizando…";
+  const idea = { id: Date.now(), category: cat, title: titulo || cat, text: txt, date: new Date().toLocaleString('es-CO') };
+  db.push(idea);
+  try {
+    const res = await fetch(`https://api.github.com/repos/${ghRepo}/contents/ideas.json`, {
+      method: 'PUT',
+      headers: { 'Authorization': `token ${ghToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: `💡 Nueva idea: ${idea.title}`,
+        content: btoa(unescape(encodeURIComponent(JSON.stringify(db, null, 2)))),
+        sha
+      })
+    });
+    if (res.ok) {
+      const j = await res.json(); sha = j.content.sha;
+      document.getElementById('text-idea').value = '';
+      document.getElementById('titulo-idea').value = '';
+      renderIdeas();
+      renderQuickIdeas();
+      updateKPIs();
+    } else { db.pop(); alert("Error al guardar."); }
+  } catch (e) { db.pop(); alert("Error: " + e.message); }
+  btn.disabled = false; btn.textContent = "💾 Guardar en Base de Datos";
+}
+
+function addLocalIdea() { openModal('modal-local'); }
+
+function saveLocalIdea() {
+  const txt = document.getElementById('m-texto').value.trim();
+  const titulo = document.getElementById('m-titulo').value.trim();
+  const cat = document.getElementById('m-cat').value;
+  if (!txt) return;
+  const idea = { id: Date.now(), category: cat, title: titulo || cat, text: txt, date: new Date().toLocaleString('es-CO'), local: true };
+  localIdeas.push(idea);
+  localStorage.setItem('cacao-local-ideas', JSON.stringify(localIdeas));
+  closeModal('modal-local');
+  document.getElementById('m-texto').value = '';
+  document.getElementById('m-titulo').value = '';
+  renderIdeas();
+  updateKPIs();
+}
+
+const catColors = {
+  AgroTech: '#10b981', FinTech: '#f59e0b', DeepTech: '#8b5cf6',
+  IA: '#3b82f6', EdTech: '#f43f5e', ClimaTech: '#06b6d4', General: '#64748b'
+};
+
+function filterIdeas(cat, chip) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  filterActive = cat;
+  renderIdeas();
+}
+
+function renderIdeas() {
+  const all = [...db, ...localIdeas];
+  const filtered = filterActive === 'all' ? all : all.filter(i => i.category === filterActive);
+  const feed = document.getElementById('ideas-feed');
+  document.getElementById('ideas-count').textContent = `${all.length} idea${all.length !== 1 ? 's' : ''}`;
+  document.getElementById('local-count').textContent = `${localIdeas.length} ideas`;
+  if (!filtered.length) {
+    feed.innerHTML = '<p class="text-slate-500 text-sm italic text-center mt-8">No hay ideas en esta categoría.</p>';
+    return;
+  }
+  feed.innerHTML = filtered.slice().reverse().map(i => {
+    const color = catColors[i.category] || '#64748b';
+    const isLocal = i.local ? '<span class="badge ml-2" style="background:rgba(100,116,139,0.2);color:#94a3b8">Local</span>' : '';
+    return `<div class="idea-card" style="border-left-color:${color}">
+      <div class="flex items-center gap-2 mb-1 flex-wrap">
+        <span class="badge" style="background:${color}22;color:${color}">${i.category}</span>
+        ${isLocal}
+        <span class="text-slate-500 text-[10px] ml-auto">${i.date}</span>
+      </div>
+      ${i.title && i.title !== i.category ? `<p class="font-bold text-sm text-slate-200 mb-1">${i.title}</p>` : ''}
+      <p class="text-slate-300 text-sm">${i.text}</p>
+    </div>`;
+  }).join('');
+}
+
+function renderQuickIdeas() {
+  const el = document.getElementById('quick-ideas');
+  const all = [...db, ...localIdeas].slice(-3).reverse();
+  if (!all.length) { el.innerHTML = '<span class="text-slate-500 text-sm italic">Conecta con GitHub para ver tus ideas aquí.</span>'; return; }
+  el.className = 'space-y-2';
+  el.innerHTML = all.map(i => {
+    const color = catColors[i.category] || '#64748b';
+    return `<div class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-800/60">
+      <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:${color}"></span>
+      <div class="min-w-0">
+        <p class="text-xs font-semibold text-slate-200 truncate">${i.title || i.category}</p>
+        <p class="text-[10px] text-slate-500 truncate">${i.text}</p>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateKPIs() {
+  const total = db.length + localIdeas.length;
+  document.getElementById('kpi-ideas').textContent = total;
+  document.getElementById('kpi-ideas-sub').textContent = total > 0 ? `${db.length} en GitHub, ${localIdeas.length} locales` : 'Sincroniza con GitHub';
+}
+
+// ─── CHARTS ────────────────────────────
+function initCharts() {
+  // Sectores pie
+  const ctx1 = document.getElementById('chartSectores').getContext('2d');
+  new Chart(ctx1, {
+    type: 'doughnut',
+    data: {
+      labels: ['AgroTech','FinTech','DeepTech','IA','EdTech','ClimaTech'],
+      datasets: [{ data: [25,20,15,20,10,10],
+        backgroundColor: ['#10b981','#f59e0b','#8b5cf6','#3b82f6','#f43f5e','#06b6d4'],
+        borderWidth: 0, hoverOffset: 6 }]
+    },
+    options: {
+      cutout: '65%', plugins: { legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 12 } } },
+      animation: { animateRotate: true, duration: 1000 }
+    }
+  });
+
+  // Valor
+  const ctx2 = document.getElementById('chartValor').getContext('2d');
+  new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: ['Grano sin tecno','AgroTech','+ FinTech','+ Blockchain','+ IA'],
+      datasets: [{ label: 'USD / kg', data: [0.8, 1.4, 2.1, 3.0, 4.5],
+        backgroundColor: ['#334155','#10b981aa','#f59e0baa','#3b82f6aa','#8b5cf6dd'],
+        borderRadius: 8, borderWidth: 0 }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => '$' + v }, grid: { color: 'rgba(255,255,255,0.06)' } }
+      },
+      animation: { duration: 1200 }
+    }
+  });
+
+  // Mujeres
+  const ctx3 = document.getElementById('chartMujeres').getContext('2d');
+  new Chart(ctx3, {
+    type: 'radar',
+    data: {
+      labels: ['Ingresos','Calidad','Reconocimiento','Capacitación','Autonomía'],
+      datasets: [
+        { label: 'Sin tecnología', data: [30,40,25,20,35], backgroundColor: 'rgba(100,116,139,0.2)', borderColor: '#64748b', pointBackgroundColor: '#64748b' },
+        { label: 'Con AgroTech', data: [75,85,80,90,85], backgroundColor: 'rgba(244,63,94,0.15)', borderColor: '#f43f5e', pointBackgroundColor: '#f43f5e' }
+      ]
+    },
+    options: {
+      plugins: { legend: { labels: { color: '#94a3b8', font: { size: 10 } } } },
+      scales: {
+        r: {
+          grid: { color: 'rgba(255,255,255,0.08)' },
+          pointLabels: { color: '#94a3b8', font: { size: 10 } },
+          ticks: { display: false }, min: 0, max: 100
+        }
+      }
+    }
+  });
+}
+
+// ─── PROGRESS BARS ─────────────────────
+function animateProgressBars() {
+  document.querySelectorAll('.prog-fill').forEach(el => {
+    setTimeout(() => { el.style.width = el.dataset.w; }, 300);
+  });
+}
+
+// ─── INIT ──────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  initCharts();
+  animateProgressBars();
+  renderIdeas();
+  renderQuickIdeas();
+  updateKPIs();
+  // Close modals on overlay click
+  document.querySelectorAll('.modal-overlay').forEach(m => {
+    m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+  });
+});
+</script>
+</body>
+</html>
